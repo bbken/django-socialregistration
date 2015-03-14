@@ -184,7 +184,7 @@ class Setup(SocialRegistration, View):
             return HttpResponseRedirect(next)
 
 
-# copied from our codebase
+# copied from BB codebase
 class JsonResponse(HttpResponse):
     """Dumps the given argument to JSON and sets the proper
     mimetype.
