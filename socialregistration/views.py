@@ -1,9 +1,12 @@
 from django.conf import settings
 from django.contrib.auth import logout
+from django.core.serializers import serialize
 from django.core.urlresolvers import reverse
-from django.http import HttpResponseRedirect
+from django.db.models.query import QuerySet
+from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.translation import ugettext_lazy as _
 from django.views.generic.base import View, TemplateView
+import simplejson
 from socialregistration.clients.oauth import OAuthError
 from socialregistration.contrib.openid.client import OpenIDClient
 from socialregistration.mixins import SocialRegistration
@@ -156,8 +159,11 @@ class Setup(SocialRegistration, View):
             initial=self.get_initial_data(request, user, profile, client))
         
         if not form.is_valid():
-            additional_context = self.get_context(request, user, profile, client)
-            return self.render_to_response(dict({'form': form}, **additional_context))
+            if request.is_ajax():
+                return JsonResponse(form.errors, status=400)
+            else:
+                additional_context = self.get_context(request, user, profile, client)
+                return self.render_to_response(dict({'form': form}, **additional_context))
         
         user, profile = form.save(request, user, profile, client)
         
@@ -170,9 +176,28 @@ class Setup(SocialRegistration, View):
         self.send_login_signal(request, user, profile, client)
         
         self.delete_session_data(request)
-        
-        return HttpResponseRedirect(self.get_next(request))
 
+        next = self.get_next(request)
+        if request.is_ajax():
+            return HttpResponse({'next': next})
+        else:
+            return HttpResponseRedirect(next)
+
+
+# copied from our codebase
+class JsonResponse(HttpResponse):
+    """Dumps the given argument to JSON and sets the proper
+    mimetype.
+
+    Use in place of HttpResponse.
+    """
+    def __init__(self, object, status=200):
+        if isinstance(object, QuerySet):
+            content = serialize('json', object)
+        else:
+            content = simplejson.dumps(object)
+        super(JsonResponse, self).__init__(
+            content, content_type='application/json', status=status)
 
 class Logout(View):
     """
