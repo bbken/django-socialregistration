@@ -154,16 +154,17 @@ class Setup(SocialRegistration, View):
         except KeyError:
             return self.error_to_response(request, dict(
                 error=_("A social profile is missing from your session.")))
-        
+
+        initial_data = self.get_initial_data(request, user, profile, client)
         form = self.get_form()(data=request.POST, files=request.FILES,
-            initial=self.get_initial_data(request, user, profile, client))
+            initial=initial_data)
         
         if not form.is_valid():
             if request.is_ajax():
                 return JsonResponse(form.errors, status=400)
             else:
                 additional_context = self.get_context(request, user, profile, client)
-                return self.render_to_response(dict({'form': form}, **additional_context))
+                return self.render_to_response(dict({'form': form, 'data': initial_data}, **additional_context))
         
         user, profile = form.save(request, user, profile, client)
         
@@ -179,7 +180,7 @@ class Setup(SocialRegistration, View):
 
         next = self.get_next(request)
         if request.is_ajax():
-            return HttpResponse({'next': next})
+            return JsonResponse({'next': next})
         else:
             return HttpResponseRedirect(next)
 
