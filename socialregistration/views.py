@@ -134,12 +134,13 @@ class Setup(SocialRegistration, View):
          
         if GENERATE_USERNAME:
             return self.generate_username_and_redirect(request, user, profile, client)
-            
-        form = self.get_form()(initial=self.get_initial_data(request, user, profile, client))
+
+        initial_data = self.get_initial_data(request, user, profile, client)
+        form = self.get_form()(initial=initial_data)
         
         additional_context = self.get_context(request, user, profile, client)
-        return self.render_to_response(dict({'form': form}, **additional_context))
-        
+        return self.render_to_response(dict({'form': form, 'data': initial_data}, **additional_context))
+
     def post(self, request):
         """
         Save the user and profile, login and send the right signals.
@@ -158,6 +159,7 @@ class Setup(SocialRegistration, View):
         initial_data = self.get_initial_data(request, user, profile, client)
         form = self.get_form()(data=request.POST, files=request.FILES,
             initial=initial_data)
+
         
         if not form.is_valid():
             if request.is_ajax():
